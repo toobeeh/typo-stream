@@ -35,15 +35,16 @@ io.on('connection', function (socket) {
         // generate id and push to streamers
         var streamID = "typoStrm" + (Math.random() * Math.ceil(Date.now() / 1000)).toString(16);
         streamers.push({ socket: socket, id: streamID });
+        io.to(streamID).emit("message", "Lobby stream has been started for id: " + streamID);
         // listen for stream data and broadcast
         socket.on("streamdata", function (data) {
-            socket.to(streamID).emit("streamdata", data);
+            io.to(streamID).emit("streamdata", data);
         });
     });
     // listen for spectate requests
     socket.on("spectate", function (data) {
         // if data is not a valid stream id
-        if (!streamers.some(function (streamer) { return streamer.id == data; }))
+        if (!data.id || !data.name || !streamers.some(function (streamer) { return streamer.id == data.id; }))
             return;
         // if socket is already streaming return
         if (streamers.some(function (streamer) { return streamer.socket == socket; }))
@@ -53,8 +54,9 @@ io.on('connection', function (socket) {
             return;
         // generate id and push to spectators
         var streamID = "typoSpct" + (Math.random() * Math.ceil(Date.now() / 1000)).toString(16);
-        spectators.push({ socket: socket, id: streamID });
-        // join broadcast rooms
-        socket.join(data);
+        spectators.push({ socket: socket, id: streamID, name: data.name });
+        // join broadcast rooms and emit join
+        socket.join(data.id);
+        io.to(data.id).emit("message", data.name + " joined the stream.");
     });
 });

@@ -19,7 +19,7 @@ const io = new Server(server, {
 let streamers: Array<{socket: Socket, id: string}>  = [];
 
 // map for lisetning clients
-let spectators: Array<{socket: Socket, id: string}>  = [];
+let spectators: Array<{socket: Socket, id: string, name: string}>  = [];
 
 io.on('connection', (socket) => {
 
@@ -43,10 +43,11 @@ io.on('connection', (socket) => {
         // generate id and push to streamers
         const streamID = "typoStrm" + (Math.random() * Math.ceil(Date.now() / 1000)).toString(16);
         streamers.push({socket: socket, id: streamID});
+        io.to(streamID).emit("message", "Lobby stream has been started for id: " + streamID);
 
         // listen for stream data and broadcast
         socket.on("streamdata", data => {
-            socket.to(streamID).emit("streamdata", data);
+            io.to(streamID).emit("streamdata", data);
         });
     });
 
@@ -54,7 +55,7 @@ io.on('connection', (socket) => {
     socket.on("spectate", (data) => {
 
         // if data is not a valid stream id
-        if(!streamers.some(streamer => streamer.id == data)) return;
+        if(!data.id || !data.name || !streamers.some(streamer => streamer.id == data.id)) return;
 
         // if socket is already streaming return
         if(streamers.some(streamer => streamer.socket == socket)) return;
@@ -64,9 +65,10 @@ io.on('connection', (socket) => {
 
         // generate id and push to spectators
         const streamID = "typoSpct" + (Math.random() * Math.ceil(Date.now() / 1000)).toString(16);
-        spectators.push({socket: socket, id: streamID});
+        spectators.push({socket: socket, id: streamID, name: data.name});
 
-        // join broadcast rooms
-        socket.join(data);
+        // join broadcast rooms and emit join
+        socket.join(data.id);
+        io.to(data.id).emit("message", data.name + " joined the stream.");
     });
   });
