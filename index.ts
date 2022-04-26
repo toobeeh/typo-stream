@@ -41,7 +41,7 @@ io.on('connection', (socket) => {
         if(spectators.some(spectator => spectator.socket == socket)) return;
 
         // generate id and push to streamers
-        const streamID = "typoStrm" + (Math.random() * Math.ceil(Date.now() / 1000)).toString(16);
+        const streamID = "typoStrm_" + (Math.ceil(Math.random() * Date.now() / 100)).toString(16);
         streamers.push({socket: socket, id: streamID});
         socket.join(streamID);
         socket.join("streamer");
@@ -56,9 +56,6 @@ io.on('connection', (socket) => {
     // listen for spectate requests
     socket.on("spectate", (data) => {
 
-
-        console.log(data, !data.id, !data.name, !streamers.some(streamer => streamer.id == data.id));
-
         // if data is not a valid stream id
         if(!data.id || !data.name || !streamers.some(streamer => streamer.id == data.id)) return;
 
@@ -69,7 +66,7 @@ io.on('connection', (socket) => {
         if(spectators.some(spectator => spectator.socket == socket)) return;
 
         // generate id and push to spectators
-        const streamID = "typoSpct" + (Math.random() * Math.ceil(Date.now() / 1000)).toString(16);
+        const streamID = "typoSpct_" + (Math.ceil(Math.random() * Date.now() / 100)).toString(16);
         spectators.push({socket: socket, id: streamID, name: data.name});
 
         // join broadcast rooms and emit join
