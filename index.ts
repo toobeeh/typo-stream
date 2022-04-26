@@ -51,6 +51,13 @@ io.on('connection', (socket) => {
         socket.on("streamdata", data => {
             io.to(streamID).except("streamer").emit("streamdata", data);
         });
+
+        // listen for disconnect and close all related clients
+        socket.on("disconnect", () => {
+            spectators.forEach(spect => {
+                if(spect.id == streamID) spect.socket.disconnect();
+            });
+        });
     });
 
     // listen for spectate requests
@@ -65,13 +72,17 @@ io.on('connection', (socket) => {
         // if socket is already spectating return
         if(spectators.some(spectator => spectator.socket == socket)) return;
 
-        // generate id and push to spectators
-        const streamID = "typoSpct_" + (Math.ceil(Math.random() * Date.now() / 100)).toString(16);
-        spectators.push({socket: socket, id: streamID, name: data.name});
+        // push to spectators
+        spectators.push({socket: socket, id: data.id, name: data.name});
 
         // join broadcast rooms and emit join
         socket.join(data.id);
         socket.join("spectator");
         io.to(data.id).emit("message", {title: data.name + " joined the stream.", message: "Welcome! (:"});
+
+        // emit leave on disconnect
+        socket.on("disconnect", () => {
+            io.to(data.id).emit("message", {title: data.name + " left the stream.", message: ""});
+        });
     });
   });
