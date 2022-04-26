@@ -43,11 +43,13 @@ io.on('connection', (socket) => {
         // generate id and push to streamers
         const streamID = "typoStrm" + (Math.random() * Math.ceil(Date.now() / 1000)).toString(16);
         streamers.push({socket: socket, id: streamID});
+        socket.join(streamID);
+        socket.join("streamer");
         io.to(streamID).emit("message", "Lobby stream has been started for id: " + streamID);
 
         // listen for stream data and broadcast
         socket.on("streamdata", data => {
-            io.to(streamID).emit("streamdata", data);
+            io.to(streamID).except("streamer").emit("streamdata", data);
         });
     });
 
@@ -69,6 +71,7 @@ io.on('connection', (socket) => {
 
         // join broadcast rooms and emit join
         socket.join(data.id);
+        socket.join("spectator");
         io.to(data.id).emit("message", data.name + " joined the stream.");
     });
   });
