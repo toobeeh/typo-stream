@@ -1,9 +1,12 @@
 import express from "express";
 import { Server, Socket } from "socket.io";
+import cors from "cors";
 
 const PORT = process.env.PORT || 3000;
 
-const server = express().listen(
+const server = express()
+    .use(cors())
+    .listen(
     PORT, 
     () => console.log(`Express server listening on port ${PORT}`)
 );
