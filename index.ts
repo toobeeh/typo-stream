@@ -56,6 +56,9 @@ io.on('connection', (socket) => {
     // listen for spectate requests
     socket.on("spectate", (data) => {
 
+
+        console.log(data, !data.id, !data.name, !streamers.some(streamer => streamer.id == data.id));
+
         // if data is not a valid stream id
         if(!data.id || !data.name || !streamers.some(streamer => streamer.id == data.id)) return;
 
