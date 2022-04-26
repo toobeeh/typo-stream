@@ -45,7 +45,7 @@ io.on('connection', (socket) => {
         streamers.push({socket: socket, id: streamID});
         socket.join(streamID);
         socket.join("streamer");
-        io.to(streamID).emit("message", "Lobby stream has been started for id: " + streamID);
+        socket.emit("streamstart", streamID);
 
         // listen for stream data and broadcast
         socket.on("streamdata", data => {
@@ -72,6 +72,6 @@ io.on('connection', (socket) => {
         // join broadcast rooms and emit join
         socket.join(data.id);
         socket.join("spectator");
-        io.to(data.id).emit("message", data.name + " joined the stream.");
+        io.to(data.id).emit("message", {title: data.name + " joined the stream.", message: "Welcome! (:"});
     });
   });
