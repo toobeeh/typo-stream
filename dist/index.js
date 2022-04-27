@@ -82,6 +82,8 @@ io.on('connection', function (socket) {
                 if (spect.id == streamID)
                     spect.socket.disconnect();
             });
+            // remove important cache 
+            importantCache = importantCache.filter(function (c) { return c.streamid != streamID; });
         });
     });
     // listen for spectate requests

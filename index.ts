@@ -99,6 +99,9 @@ io.on('connection', (socket) => {
             spectators.forEach(spect => {
                 if(spect.id == streamID) spect.socket.disconnect();
             });
+
+            // remove important cache 
+            importantCache = importantCache.filter(c => c.streamid != streamID);
         });
     });
 
