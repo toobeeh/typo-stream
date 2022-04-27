@@ -17,6 +17,37 @@ var io = new socket_io_1.Server(server, {
 var streamers = [];
 // map for lisetning clients
 var spectators = [];
+// map for important lobby caches
+var importantCache = [];
+// cache important commands for a lobby
+var addImportant = function (id, data) {
+    var cache = importantCache.find(function (c) { return c.streamid == id; });
+    if (cache) {
+        // if event contains data of lobby init state
+        if (data[0] == "lobbyConnected") {
+            cache.cache = [];
+            cache.cache.push(data);
+        }
+        // if event contains current lobby state, set that to current
+        else if (data[0] == "lobbyState") {
+            cache.cache = cache.cache.filter(function (data) { return data[0] != "lobbyState"; });
+            cache.cache.push(data);
+        }
+        // if event contains player connect
+        else if (data[0] == "lobbyPlayerConnected" || data[0] == "lobbyPlayerDisconnected") {
+            cache.cache.push(data);
+        }
+        // if draw comamnds are incoming
+        else if (data[0] == "drawCommands") {
+            cache.cache.push(data);
+        }
+        // if canvas cleared, remove draw commands
+        else if (data[0] == "canvasClear") {
+            cache.cache = cache.cache.filter(function (data) { return data[0] != "drawCommands" && data[0] != "canvasClear"; });
+            cache.cache.push(data);
+        }
+    }
+};
 io.on('connection', function (socket) {
     console.log('Client connected');
     // remove from maps on disconnect
@@ -35,11 +66,14 @@ io.on('connection', function (socket) {
         // generate id and push to streamers
         var streamID = "typoStrm_" + (Math.ceil(Math.random() * Date.now() / 100)).toString(16);
         streamers.push({ socket: socket, id: streamID });
+        importantCache.push({ streamid: streamID, cache: [] });
         socket.join(streamID);
         socket.join("streamer");
         socket.emit("streamstart", streamID);
         // listen for stream data and broadcast
         socket.on("streamdata", function (data) {
+            // cache important
+            addImportant(streamID, data);
             io.to(streamID).except("streamer").emit("streamdata", data);
         });
         // listen for disconnect and close all related clients
@@ -52,6 +86,7 @@ io.on('connection', function (socket) {
     });
     // listen for spectate requests
     socket.on("spectate", function (data) {
+        var _a;
         // if data is not a valid stream id
         if (!data.id || !data.name || !streamers.some(function (streamer) { return streamer.id == data.id; }))
             return;
@@ -67,6 +102,10 @@ io.on('connection', function (socket) {
         socket.join(data.id);
         socket.join("spectator");
         io.to(data.id).emit("message", { title: data.name + " joined the stream.", message: "Welcome! (:" });
+        // send past important cache
+        (_a = importantCache.find(function (c) { return c.streamid == data.id; })) === null || _a === void 0 ? void 0 : _a.cache.forEach(function (data) {
+            socket.emit("streamdata", data);
+        });
         // emit leave on disconnect
         socket.on("disconnect", function () {
             io.to(data.id).emit("message", { title: data.name + " left the stream.", message: "" });
