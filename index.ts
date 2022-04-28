@@ -56,6 +56,11 @@ const addImportant = (id: string, data: any) => {
             cache.cache = cache.cache.filter(data => data[0] != "drawCommands" && data[0] != "canvasClear");
             cache.cache.push(data);
         }
+
+        // lobby properties
+        else if(["lobbyLanguage", "lobbyRounds", "lobbyDrawTime", "lobbyCustomWordsExclusive"].indexOf(data[0]) >= 0){
+            cache.cache.push(data);
+        }
     }
 }
 

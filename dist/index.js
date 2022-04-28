@@ -46,6 +46,10 @@ var addImportant = function (id, data) {
             cache.cache = cache.cache.filter(function (data) { return data[0] != "drawCommands" && data[0] != "canvasClear"; });
             cache.cache.push(data);
         }
+        // lobby properties
+        else if (["lobbyLanguage", "lobbyRounds", "lobbyDrawTime", "lobbyCustomWordsExclusive"].indexOf(data[0]) >= 0) {
+            cache.cache.push(data);
+        }
     }
 };
 io.on('connection', function (socket) {
