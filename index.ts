@@ -16,10 +16,10 @@ const io = new Server(server, {
   });
 
 // map for streaming clients
-let streamers: Array<{socket: Socket, id: string}>  = [];
+let streamers: Array<{socket: Socket, id: string, member?: any, settings: any}>  = [];
 
 // map for lisetning clients
-let spectators: Array<{socket: Socket, id: string, name: string}> = [];
+let spectators: Array<{socket: Socket, id: string, name: string, member?: any}> = [];
 
 // map for important lobby caches
 let importantCache: Array<{streamid: string, cache: Array<any>}> = [];
@@ -75,17 +75,48 @@ io.on('connection', (socket) => {
     });
 
     // listen for stream requests
-    socket.on("stream", () => {
+    socket.on("stream", async (data) => {
 
-        // if socket is already streaming return
-        if(streamers.some(streamer => streamer.socket == socket)) return;
+        // check stream settings
+        const settings = data.settings;
+        const accessToken = data.accessToken;
+        let user: any = undefined;
+
+        // try to get user if access token is set
+        if(accessToken){
+            try{
+                const memberResponse = await(await fetch("https://typo.rip/api/member/", {
+                    headers: {
+                        'Accept': '*/*',
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    method: "POST",
+                    body: "get&accessToken=" + accessToken
+                })).json();
+                user = memberResponse;
+            }
+            catch{
+                socket.emit("error", "Authorization failed.");
+                socket.disconnect();
+                return;
+            }
+        }
+
+        // if socket is already streaming or someone with same ID is streaming return
+        if(streamers.some(streamer => 
+            streamer.socket == socket || accessToken && streamer.member?.UserID == user.UserID
+        )) {
+            socket.emit("error", "Duplicate stream origin.");
+            socket.disconnect();
+            return;
+        }
 
         // if socket is already spectating return
         if(spectators.some(spectator => spectator.socket == socket)) return;
 
         // generate id and push to streamers
         const streamID = "typoStrm_" + (Math.ceil(Math.random() * Date.now() / 100)).toString(16);
-        streamers.push({socket: socket, id: streamID});
+        streamers.push({socket: socket, id: streamID, member: user, settings: settings});
         importantCache.push({streamid: streamID, cache: []});
         socket.join(streamID);
         socket.join("streamer");
@@ -111,7 +142,31 @@ io.on('connection', (socket) => {
     });
 
     // listen for spectate requests
-    socket.on("spectate", (data) => {
+    socket.on("spectate", async (data) => {
+
+        // check authentification
+        const accessToken = data.accessToken;
+        let user: any = undefined;
+
+        // try to get user if access token is set
+        if(accessToken){
+            try{
+                const memberResponse = await(await fetch("https://typo.rip/api/member/", {
+                    headers: {
+                        'Accept': '*/*',
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                    },
+                    method: "POST",
+                    body: "get&accessToken=" + accessToken
+                })).json();
+                user = memberResponse;
+            }
+            catch{
+                socket.emit("error", "Authorization failed.");
+                socket.disconnect();
+                return;
+            }
+        }
 
         // if data is not a valid stream id
         if(!data.id || !data.name || !streamers.some(streamer => streamer.id == data.id)) return;
@@ -119,11 +174,17 @@ io.on('connection', (socket) => {
         // if socket is already streaming return
         if(streamers.some(streamer => streamer.socket == socket)) return;
 
-        // if socket is already spectating return
-        if(spectators.some(spectator => spectator.socket == socket)) return;
+        // if socket is already spectating or using same account return
+        if(spectators.some(spectator => 
+            spectator.socket == socket || accessToken && spectator.member?.UserID == user.UserID
+        )) {
+            socket.emit("error", "Duplicate spectate origin.");
+            socket.disconnect();
+            return;
+        };
 
         // push to spectators
-        spectators.push({socket: socket, id: data.id, name: data.name});
+        spectators.push({socket: socket, id: data.id, name: data.name, member: user});
 
         // join broadcast rooms and emit join
         socket.join(data.id);
